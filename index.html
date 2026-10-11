@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="LabGraph — create publication-ready experimental charts with uncertainties and A4 export">
+  <title>LabGraph — experimental charts</title>
+  <meta name="theme-color" content="#0e1411">
+  <script>document.documentElement.dataset.theme=localStorage.getItem('labgraph-theme')==='light'?'light':'dark';</script>
+  <link rel="stylesheet" href="styles.css?v=21">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="LabGraph, back to top">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span data-i18n="appName">LabGraph</span>
+    </a>
+    <div class="topbar-actions">
+      <button class="button help-button" id="helpBtn" type="button" aria-label="Keyboard shortcuts" title="Keyboard shortcuts">?</button>
+      <button class="button theme-button" id="themeBtn" type="button" aria-label="Switch to light theme" title="Switch to light theme">☀</button>
+      <button class="button language" id="langBtn" type="button" title="Переключить на русский">RU</button>
+      <button class="button secondary mobile-preview" id="viewPreviewBtn" type="button">◉ <span data-i18n="viewChart">Chart</span></button>
+      <button class="button danger" id="shutdownBtn" type="button" hidden title="Stop the local server">⏻ <span data-i18n="shutdown">Quit</span></button>
+      <button class="button ghost" id="resetBtn" type="button" data-i18n="newGraph">New graph</button>
+      <button class="button primary" id="printBtn" type="button">
+        <span aria-hidden="true">⇩</span> <span data-i18n="downloadA4">Download A4</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <aside class="panel controls" aria-label="Chart settings">
+      <nav class="steps" aria-label="Settings sections">
+        <a href="#dataSection" class="active"><b>1</b><span data-i18n="data">Data</span></a>
+        <a href="#designSection"><b>2</b><span data-i18n="design">Design</span></a>
+        <a href="#exportSection"><b>3</b><span data-i18n="export">Export</span></a>
+      </nav>
+
+      <section id="dataSection" class="control-section">
+        <div class="section-heading">
+          <div><span class="eyebrow" data-i18n="step1">Step 1</span><h1 data-i18n="experimentalData">Experimental data</h1></div>
+          <button class="icon-button" id="loadDemoBtn" type="button" title="Load example">↻</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data-table" aria-label="Experimental data table">
+            <thead><tr><th>#</th><th>X</th><th>± ΔX</th><th>Y</th><th>± ΔY</th><th></th></tr></thead>
+            <tbody id="dataBody"></tbody>
+          </table>
+        </div>
+        <div class="data-actions">
+          <button class="button secondary" id="addRowBtn" type="button">＋ <span data-i18n="addRow">Add row</span></button>
+          <div><button class="button text muted-action" id="clearRowsBtn" type="button" data-i18n="clear">Clear</button><button class="button text" id="pasteBtn" type="button">▦ <span data-i18n="pasteTable">Paste table</span></button></div>
+        </div>
+        <div class="file-actions">
+          <button class="button ghost" id="importDataBtn" type="button">↑ CSV / TSV</button>
+          <button class="button ghost" id="sortRowsBtn" type="button">↕ <span data-i18n="sortX">Sort by X</span></button>
+          <button class="button ghost" id="undoBtn" type="button" title="Ctrl+Z" disabled>↶ <span data-i18n="undo">Undo</span></button>
+          <button class="button ghost" id="redoBtn" type="button" title="Ctrl+Y" disabled>↷ <span data-i18n="redo">Redo</span></button>
+          <button class="button secondary swap-axes" id="swapAxesBtn" type="button">⇄ <span data-i18n="swapAxes">Swap X and Y</span></button>
+        </div>
+        <p class="drop-hint" data-i18n="dropHint">You can drop a CSV/TSV file here</p>
+        <input id="dataFileInput" type="file" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values" hidden>
+        <div class="bulk-errors">
+          <div class="bulk-errors-title"><span data-i18n="sameError">Common uncertainty</span><small data-i18n="allPoints">for all points</small></div>
+          <label><span>± ΔX</span><input id="commonDx" inputmode="decimal" type="text" placeholder="—"></label>
+          <label><span>± ΔY</span><input id="commonDy" inputmode="decimal" type="text" placeholder="—"></label>
+          <button id="applyCommonErrors" class="button secondary" type="button" data-i18n="apply">Apply</button>
+        </div>
+        <p class="hint" data-i18n="decimalHint">Decimal commas are supported. Uncertainties may be left blank.</p>
+        <p class="data-summary" id="dataSummary" aria-live="polite"></p>
+      </section>
+
+      <section id="designSection" class="control-section">
+        <span class="eyebrow" data-i18n="step2">Step 2</span><h2 data-i18n="labelsDesign">Labels and design</h2>
+        <div class="field wide"><label for="chartTitle" data-i18n="chartTitle">Chart title</label><span class="title-input"><input id="chartTitle" type="text"><button id="autoTitleBtn" type="button" data-i18n="autoTitle">Auto</button></span></div>
+        <div class="two-col">
+          <label class="field"><span data-i18n="xAxis">X axis: quantity</span><input id="xLabel" type="text"></label>
+          <label class="field"><span data-i18n="xUnit">X unit</span><input id="xUnit" type="text"></label>
+          <label class="field"><span data-i18n="yAxis">Y axis: quantity</span><input id="yLabel" type="text"></label>
+          <label class="field"><span data-i18n="yUnit">Y unit</span><input id="yUnit" type="text"></label>
+        </div>
+
+        <fieldset>
+          <legend data-i18n="approximation">Curve fitting</legend>
+          <label class="check-row"><input id="fitLinear" type="checkbox"><span><b data-i18n="linear">Linear</b><small>y = kx + b</small></span></label>
+          <label class="check-row"><input id="fitProportional" type="checkbox"><span><b data-i18n="proportional">Direct proportion</b><small>y = kx</small></span></label>
+          <label class="check-row"><input id="fitQuadratic" type="checkbox"><span><b data-i18n="quadratic">Quadratic</b><small>y = ax² + bx + c</small></span></label>
+          <label class="check-row"><input id="fitSmooth" type="checkbox"><span><b data-i18n="smooth">Smooth interpolation</b><small data-i18n="unknownDependency">For an unknown relationship</small></span></label>
+        </fieldset>
+
+        <fieldset class="constant-lines">
+          <legend data-i18n="constantLines">Horizontal and vertical lines</legend>
+          <div class="constant-line-row">
+            <label class="check-row"><input id="fitHorizontal" type="checkbox"><span><b data-i18n="horizontalLine">Horizontal</b><small>y = ȳ</small></span></label>
+          </div>
+          <div class="constant-line-row">
+            <label class="check-row"><input id="fitVertical" type="checkbox"><span><b data-i18n="verticalLine">Vertical</b><small>x = x̄</small></span></label>
+          </div>
+          <p class="hint" data-i18n="constantHint">Lines are calculated automatically from the mean X or Y.</p>
+        </fieldset>
+
+        <div class="two-col">
+          <label class="field"><span data-i18n="background">Background</span><select id="paper"><option value="plain" data-i18n="white">White</option><option value="grid" data-i18n="coordinateGrid">Coordinate grid</option><option value="millimeter" data-i18n="graphPaper">Graph paper</option></select></label>
+          <label class="field"><span data-i18n="pageFormat">Page format</span><select id="orientation"><option value="landscape" data-i18n="landscape">A4, landscape</option><option value="portrait" data-i18n="portrait">A4, portrait</option></select></label>
+        </div>
+        <div id="millimeterOptions" class="millimeter-options">
+          <label class="field"><span data-i18n="gridContrast">Graph paper contrast</span><input id="gridIntensity" type="range" min="1" max="3" step="1"></label>
+          <small><span data-i18n="soft">Soft</span><span data-i18n="clearGrid">Strong</span></small>
+        </div>
+        <label class="check-row compact"><input id="showLegend" type="checkbox"><span><b data-i18n="showLegend">Show legend</b><small data-i18n="aboveChart">Above the plot area</small></span></label>
+
+        <details class="axis-details">
+          <summary><span data-i18n="axisLimits">Axis limits and ticks</span> <span>⌄</span></summary>
+          <label class="toggle-row"><span data-i18n="autoScale">Automatic scale</span><input id="autoScale" type="checkbox" role="switch"></label>
+          <div id="axisFields" class="axis-grid">
+            <span></span><b data-i18n="minimum">Minimum</b><b data-i18n="maximum">Maximum</b><b data-i18n="step">Step</b>
+            <label>X</label><input id="xMin" type="text"><input id="xMax" type="text"><input id="xStep" type="text">
+            <label>Y</label><input id="yMin" type="text"><input id="yMax" type="text"><input id="yStep" type="text">
+          </div>
+        </details>
+      </section>
+
+      <section id="exportSection" class="control-section export-section">
+        <span class="eyebrow" data-i18n="step3">Step 3</span><h2 data-i18n="downloadResult">Download result</h2>
+        <div class="export-grid">
+          <button class="export-card" data-export="svg"><strong>SVG</strong><span data-i18n="vector">Vector</span></button>
+          <button class="export-card" data-export="png"><strong>PNG</strong><span>300 dpi</span></button>
+          <button class="export-card accent" data-export="pdf"><strong>PDF</strong><span data-i18n="downloadA4">Download A4</span></button>
+          <button class="export-card" data-export="csv"><strong>CSV</strong><span data-i18n="sourceData">Source data</span></button>
+        </div>
+        <div class="project-actions">
+          <button class="button ghost" id="saveProjectBtn" type="button" data-i18n="saveProject">Save project</button>
+          <button class="button ghost" id="openProjectBtn" type="button" data-i18n="openProject">Open project</button>
+          <input id="projectFileInput" type="file" accept=".json,.labgraph,application/json" hidden>
+        </div>
+      </section>
+    </aside>
+
+    <section class="preview-area" id="previewArea" aria-label="Chart preview">
+      <div class="preview-toolbar">
+        <div>
+          <span class="eyebrow" data-i18n="preview">Preview</span>
+        </div>
+        <div class="zoom-control"><button id="zoomOut" type="button">−</button><span id="zoomValue">100%</span><button id="zoomIn" type="button">＋</button></div>
+      </div>
+
+      <div class="canvas-stage" id="canvasStage">
+        <article class="paper-sheet landscape" id="paperSheet">
+          <div id="chart" class="chart" role="img" aria-label="Experimental data chart"></div>
+        </article>
+      </div>
+
+      <div class="results" id="results" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <dialog id="pasteDialog">
+    <form method="dialog" class="dialog-card">
+      <div class="dialog-heading"><div><span class="eyebrow" data-i18n="quickInput">Quick input</span><h2 data-i18n="pasteHeading">Paste a table</h2></div><button value="cancel" class="icon-button" aria-label="Close">×</button></div>
+      <p data-i18n="pasteHelp">Copy 2–4 columns from Excel or Google Sheets: X, ΔX, Y, ΔY. Two columns are treated as X and Y.</p>
+      <textarea id="pasteArea" rows="9" placeholder="0&#9;0,2&#9;1,0&#9;0,1&#10;5&#9;0,2&#9;3,3&#9;0,1"></textarea>
+      <div class="dialog-actions"><button id="pasteClipboardBtn" type="button" class="button secondary" data-i18n="pasteClipboard">Paste from clipboard</button><span class="dialog-spacer"></span><button value="cancel" class="button ghost" data-i18n="cancel">Cancel</button><button id="applyPasteBtn" value="default" class="button primary" data-i18n="loadData">Load data</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="helpDialog">
+    <form method="dialog" class="dialog-card shortcut-dialog">
+      <div class="dialog-heading"><div><span class="eyebrow" data-i18n="help">Help</span><h2 data-i18n="shortcuts">Keyboard shortcuts</h2></div><button value="cancel" class="icon-button" aria-label="Close">×</button></div>
+      <div class="shortcut-list">
+        <span data-i18n="shortcutSave">Save project</span><kbd>Ctrl / ⌘ + S</kbd>
+        <span data-i18n="shortcutOpen">Open project</span><kbd>Ctrl / ⌘ + O</kbd>
+        <span data-i18n="shortcutPdf">Download PDF</span><kbd>Ctrl / ⌘ + P</kbd>
+        <span data-i18n="shortcutUndo">Undo / redo</span><kbd>Ctrl / ⌘ + Z</kbd>
+        <span data-i18n="shortcutNext">Move to the next cell</span><kbd>Enter</kbd>
+      </div>
+      <div class="dialog-actions"><button value="default" class="button primary" data-i18n="understood">Got it</button></div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js?v=22"></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+name: Create release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+      - run: chmod +x scripts/build-release.sh && ./scripts/build-release.sh
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/LabGraph-Windows.zip dist/LabGraph-macOS.zip --generate-notes --title "LabGraph $GITHUB_REF_NAME"
