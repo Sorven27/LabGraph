@@ -21,8 +21,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          release_notes="$(gh api --method POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$GITHUB_REF_NAME" --jq .body)"
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --notes "$release_notes"
             gh release upload "$GITHUB_REF_NAME" dist/LabGraph-Windows.zip dist/LabGraph-macOS.zip --clobber
           else
-            gh release create "$GITHUB_REF_NAME" dist/LabGraph-Windows.zip dist/LabGraph-macOS.zip --generate-notes --title "LabGraph $GITHUB_REF_NAME"
+            gh release create "$GITHUB_REF_NAME" dist/LabGraph-Windows.zip dist/LabGraph-macOS.zip --notes "$release_notes" --title "LabGraph $GITHUB_REF_NAME"
           fi
